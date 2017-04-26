@@ -11,11 +11,12 @@ from keras.layers.normalization import BatchNormalization
 from keras.utils.data_utils import get_file
 from keras.models import Sequential
 from keras.layers.core import Flatten, Dense, Dropout, Lambda
-from keras.layers.convolutional import Convolution2D, MaxPooling2D, ZeroPadding2D
+from keras.layers.convolutional import Conv2D, MaxPooling2D, ZeroPadding2D
 from keras.layers.pooling import GlobalAveragePooling2D
 from keras.optimizers import SGD, RMSprop, Adam
 from keras.preprocessing import image
 
+K.set_image_dim_ordering('th')
 
 vgg_mean = np.array([123.68, 116.779, 103.939], dtype=np.float32).reshape((3,1,1))
 def vgg_preprocess(x):
@@ -52,7 +53,7 @@ class Vgg16():
         model = self.model
         for i in range(layers):
             model.add(ZeroPadding2D((1, 1)))
-            model.add(Convolution2D(filters, 3, 3, activation='relu'))
+            model.add(Conv2D(filters, (3, 3), activation='relu'))
         model.add(MaxPooling2D((2, 2), strides=(2, 2)))
 
 
@@ -94,7 +95,7 @@ class Vgg16():
         self.compile()
 
     def finetune(self, batches):
-        self.ft(batches.nb_class)
+        self.ft(batches.num_class)
         classes = list(iter(batches.class_indices))
         for c in batches.class_indices:
             classes[batches.class_indices[c]] = c
@@ -106,17 +107,17 @@ class Vgg16():
                 loss='categorical_crossentropy', metrics=['accuracy'])
 
 
-    def fit_data(self, trn, labels,  val, val_labels,  nb_epoch=1, batch_size=64):
-        self.model.fit(trn, labels, nb_epoch=nb_epoch,
+    def fit_data(self, trn, labels,  val, val_labels,  epochs=1, batch_size=64):
+        self.model.fit(trn, labels, epochs=epochs,
                 validation_data=(val, val_labels), batch_size=batch_size)
 
 
-    def fit(self, batches, val_batches, nb_epoch=1):
-        self.model.fit_generator(batches, samples_per_epoch=batches.nb_sample, nb_epoch=nb_epoch,
-                validation_data=val_batches, nb_val_samples=val_batches.nb_sample)
+    def fit(self, batches, val_batches, epochs=1):
+        self.model.fit_generator(batches, steps_per_epoch=batches.samples, epochs=epochs,
+                validation_data=val_batches, validation_steps=val_batches.samples)
 
 
     def test(self, path, batch_size=8):
         test_batches = self.get_batches(path, shuffle=False, batch_size=batch_size, class_mode=None)
-        return test_batches, self.model.predict_generator(test_batches, test_batches.nb_sample)
+        return test_batches, self.model.predict_generator(test_batches, test_batches.samples)
 
